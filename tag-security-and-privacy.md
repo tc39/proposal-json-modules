@@ -2,10 +2,7 @@
 
 ## 2.1. What information might this feature expose to Web sites or other parties, and for what purposes is that exposure necessary?
 
-This proposal only exposes the information to web servers that a particular resource is being fetched. This is necessary to load the module graph.
-
-The current proposal does not send any headers related to the import condition/module type for content negotiation, though this has been raised in [tc39/proposal-import-conditions#61](https://github.com/tc39/proposal-import-conditions/issues/61).
-
+Importing a module exposes the information to web servers that a particular resource is being fetched, which is necessary to load the module graph.  This proposal does not change or add to the information exposed in this manner.
 
 ## 2.2. Is this specification exposing the minimum amount of information necessary to power the feature?
 
@@ -27,7 +24,7 @@ No.
 
 ## 2.6. What information from the underlying platform, e.g. configuration data, is exposed by this specification to an origin?
 
-Regardless of the conclusion of 2.1 about exposing the type to the origin; if a host implements this proposal, JSON modules must be supported.
+If a host implements this proposal, JSON modules must be supported.
 
 ## 2.7. Does this specification allow an origin access to sensors on a user’s device
 
@@ -39,9 +36,7 @@ No data.
 
 ## 2.9. Does this specification enable new script execution/loading mechanisms?
 
-This proposal will enable future module types on the web, first JSON module and then HTML, CSS, ...
-
-The type attribute is designed to let the importer specify whether the imported module has the capability to execute code: some module types are able to execute code, while others are not.
+This proposal will enable loading of (nonexecutable) JSON modules.
 
 ## 2.10. Does this specification allow an origin to access other devices?
 
@@ -57,7 +52,7 @@ No identifiers.
 
 ## 2.13. How does this specification distinguish between behavior in first-party and third-party contexts?
 
-This specification allows importing more kinds of cross-origin subresources (initially, JSON documents) as modules, analogous to how ES modules work. The imported subresource is not distinguished and generally treated as "first-party", but the explicit use of type avoids giving this subresource unnecessary capabilities (including both executing code and accessing parsers).
+This specification allows importing cross-origin JSON document subresources as modules, analogous to how ES modules work. The imported subresource is not distinguished and generally treated as "first-party", but the explicit use of `type: "json"` avoids giving this subresource unnecessary capabilities (including both executing code and accessing parsers).
 
 ## 2.14. How does this specification work in the context of a user agent’s Private Browsing or "incognito" mode?
 
