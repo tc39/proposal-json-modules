@@ -28,7 +28,7 @@ Rather than granting hosts free reign to implement JSON modules independently, s
 
 ## Proposed semantics and interoperability
 
-If a module import has an assertion with key `type` and value `json`, the host is required to either fail the import, or treat it as a JSON module.  Specifically this means that the content of the module is parsed as JSON and the resulting JSON object is the default export of the module (which has no named exports).
+If a module import has an assertion with key `type` and value `json`, the host is required to either fail the import, or treat it as a JSON module. Specifically this means that the content of the module is parsed as JSON and the resulting JSON object is the default export of the module (which has no named exports).
 
 Each JavaScript host is expected to provide a secondary way of checking whether a module is a JSON module. For example, on the Web, the MIME type would be checked to be a JSON MIME type. In "local" desktop/server/embedded environments, the file extension may be checked (possibly after symlinks are followed). The `type: "json"` is indicated at the import site, rather than *only* through that other mechanism in order to prevent the privilege escalation issue noted in the opening section.
 
