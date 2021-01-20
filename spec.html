@@ -235,7 +235,7 @@
     <p>The abstract operation ParseJSONModule takes a single argument _source_ which is a String representing the contents of a module.</p>
 
     <emu-alg>
-      1. Let _json_ be ? Call(%JSONParse%, *undefined*, « _source_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
+      1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
       1. Return CreateDefaultExportSyntheticModule(_json_).
     </emu-alg>
   </emu-clause>
