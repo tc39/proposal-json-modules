@@ -58,7 +58,7 @@
         <ins>
           If _assertions_ has an entry _entry_ such that _entry_.[[Key]] is *"type"*, let _type_ be _entry_.[[Value]]. The following requirements apply:
           <ul>
-            <li><ins>If _type_ is *"json"*, then this algorithm must either invoke ParseJSONModule and return the resulting Module Record, or throw an exception.</ins></li>
+            <li><ins>If _type_ is *"json"*, then this algorithm must either invoke ParseJSONModule and, unless ParseJSONModule resulted in an abrupt completion, return the resulting Module Record, or throw an exception.</ins></li>
           </ul>
         </ins>
       </li>
@@ -112,8 +112,8 @@
           </tr>
           <tr>
             <td>[[EvaluationSteps]]
-            <td>An abstract operation
-            <td>An abstract operation that will be performed upon evaluation of the module, taking the Synthetic Module Record as its sole argument. These will usually set up the exported values, by using SetSyntheticModuleExport. They must not modify [[ExportNames]]. They may return an abrupt completion.
+            <td>An Abstract Closure
+            <td>An Abstract Closure that will be performed upon evaluation of the module, taking the Synthetic Module Record as its sole argument. These will usually set up the exported values, by using SetSyntheticModuleExport. They must not modify [[ExportNames]]. They may return an abrupt completion.
           </tr>
         </tbody>
       </table>
