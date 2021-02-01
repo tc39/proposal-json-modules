@@ -2,7 +2,7 @@
 
 Champions: Sven Sauleau ([@xtuc](https://github.com/xtuc)), Daniel Ehrenberg ([@littledan](https://github.com/littledan)), Myles Borins ([@MylesBorins](https://github.com/MylesBorins)), and Dan Clark ([@dandclark](https://github.com/dandclark))
 
-Status: Stage 2.
+Status: Stage 3.
 
 Please leave any feedback you have in the [issues](http://github.com/tc39/proposal-json-modules/issues)!
 
@@ -16,7 +16,7 @@ import json from "./foo.json" assert { type: "json" };
 import("foo.json", { assert: { type: "json" } });
 ```
 
-Note: this proposal was originally part of the [import assertions proposal](https://github.com/tc39/proposal-import-assertions/), but it was [resolved](https://github.com/tc39/notes/blob/master/meetings/2020-07/july-21.md#import-conditions-for-stage-3) during the July 2020 meeting to split it out into a separate Stage 2 proposal.
+Note: this proposal was originally part of the [import assertions proposal](https://github.com/tc39/proposal-import-assertions/), but it was [resolved](https://github.com/tc39/notes/blob/master/meetings/2020-07/july-21.md#import-conditions-for-stage-3) during the July 2020 meeting to split it out into a separate proposal.
 
 ## Motivation
 
