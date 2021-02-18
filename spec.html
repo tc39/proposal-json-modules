@@ -131,112 +131,109 @@
       <emu-note type="editor">It seems we could set up the environment either here or in Instantiate(). I've chosen to do so in Instantiate() for symmetry with Source Text Module Records, but I don't think there's any actual requirement in that regard.</emu-note>
     </emu-clause>
 
-    <emu-clause id="sec-setsyntheticmoduleexport" aoid="SetSyntheticModuleExport">
-      <h1>SetSyntheticModuleExport ( _module_, _exportName_, _exportValue_ )</h1>
-
-      <p>The abstract operation SetSyntheticModuleExport can be used to set or change the exported value for a pre-established export of a Synthetic Module Record. It performs the following steps:</p>
-
-      <emu-alg>
-        1. Let _envRec_ be _module_.[[Environment]]'s EnvironmentRecord.
-        1. Perform _envRec_.SetMutableBinding(_exportName_, _exportValue_, *true*).
-      </emu-alg>
-    </emu-clause>
-
-    <emu-clause id="sec-smr-concrete-methods">
+    <emu-clause id="sec-synthetic-module-record-concrete-methods">
       <h1>Concrete Methods</h1>
 
       <p>The following are the concrete methods for Synthetic Module Record that implement the corresponding Module Record abstract methods.</p>
 
       <emu-note type="editor">I find having this wrapping sub-clause cleaner and suggest we do the same for Source Text Module Records in the main spec.</emu-note>
 
-      <emu-clause id="sec-smr-getexportednames">
-        <h1>GetExportedNames( _exportStarSet_ )</h1>
+      <emu-clause id="sec-synthetic-module-record-getexportednames">
+        <h1>GetExportedNames( [ _exportStarSet_ ] )</h1>
 
-        <p>The GetExportedNames concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
-        <p>It performs the following steps:</p>
+        <p>The GetExportedNames concrete method of a Synthetic Module Record _module_ takes optional argument _exportStarSet_.</p>
+        <p>It performs the following steps when called:</p>
 
         <emu-alg>
-          1. Let _module_ be this Synthetic Module Record.
           1. Return _module_.[[ExportNames]].
         </emu-alg>
       </emu-clause>
 
-      <emu-clause id="sec-smr-resolveexport">
-        <h1>ResolveExport( _exportName_, _resolveSet_ )</h1>
+      <emu-clause id="sec-synthetic-module-record-resolveexport">
+        <h1>ResolveExport( _exportName_ [ , _resolveSet_ ] )</h1>
 
-        <p>The ResolveExport concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
-        <p>It performs the following steps:</p>
+        <p>The ResolveExport concrete method of a Synthetic Module Record _module_ takes argument _exportName_ (a String) and optional argument _resolveSet_.</p>
+        <p>It performs the following steps when called:</p>
 
         <emu-alg>
-          1. Let _module_ be this Synthetic Module Record.
           1. If _module_.[[ExportNames]] does not contain _exportName_, return null.
           1. Return ResolvedBinding Record { [[Module]]: _module_, [[BindingName]]: _exportName_ }.
         </emu-alg>
       </emu-clause>
 
-      <emu-clause id="sec-smr-instantiate">
-        <h1>Instantiate ( )</h1>
+      <emu-clause id="sec-synthetic-module-record-link">
+        <h1>Link ( )</h1>
 
-        <p>The Instantiate concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
-        <p>It performs the following steps:</p>
+        <p>The Link concrete method of a Synthetic Module Record _module_ takes no arguments.</p>
+        <p>It performs the following steps when called:</p>
 
         <emu-alg>
-          1. Let _module_ be this Synthetic Module Record.
           1. Let _realm_ be _module_.[[Realm]].
           1. Assert: _realm_ is not *undefined*.
           1. Let _env_ be NewModuleEnvironment(_realm_.[[GlobalEnv]]).
           1. Set _module_.[[Environment]] to _env_.
-          1. Let _envRec_ be _env_'s EnvironmentRecord.
           1. For each _exportName_ in _module_.[[ExportNames]],
-          1. Perform ! _envRec_.CreateMutableBinding(_exportName_, *false*).
-          1. Perform ! _envRec_.InitializeBinding(_exportName_, *undefined*).
+            1. Perform ! _env_.CreateMutableBinding(_exportName_, *false*).
+            1. Perform ! _env_.InitializeBinding(_exportName_, *undefined*).
           1. Return *undefined*.
         </emu-alg>
       </emu-clause>
 
-      <emu-clause id="sec-smr-Evaluate">
+      <emu-clause id="sec-synthetic-module-record-evaluate">
         <h1>Evaluate ( )</h1>
 
-        <p>The Evaluate concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
-        <p>It performs the following steps:</p>
+        <p>The Evaluate concrete method of a Synthetic Module Record _module_ takes no arguments.</p>
+        <p>It performs the following steps when called:</p>
 
         <emu-alg>
-          1. Let _module_ be this Synthetic Module Record.
-          1. Let _moduleCxt_ be a new ECMAScript code execution context.
-          1. Set the Function of _moduleCxt_ to *null*.
-          1. Assert: _module_.[[Realm]] is not *undefined*.
-          1. Set the Realm of _moduleCxt_ to _module_.[[Realm]].
-          1. Set the ScriptOrModule of _moduleCxt_ to _module_.
-          1. Set the VariableEnvironment of _moduleCxt_ to _module_.[[Environment]].
-          1. Set the LexicalEnvironment of _moduleCxt_ to _module_.[[Environment]].
           1. Suspend the currently running execution context.
-          1. Push _moduleCxt_ on to the execution context stack; _moduleCxt_ is now the running execution context.
-          1. Let _result_ be the result of performing ? _module_.[[EvaluationSteps]](_module_).
-          1. Suspend _moduleCxt_ and remove it from the execution context stack.
+          1. Let _moduleContext_ be a new ECMAScript code execution context.
+          1. Set the Function of _moduleContext_ to *null*.
+          1. Set the Realm of _moduleContext_ to _module_.[[Realm]].
+          1. Set the ScriptOrModule of _moduleContext_ to _module_.
+          1. Set the VariableEnvironment of _moduleContext_ to _module_.[[Environment]].
+          1. Set the LexicalEnvironment of _moduleContext_ to _module_.[[Environment]].
+          1. Push _moduleContext_ on to the execution context stack; _moduleContext_ is now the running execution context.
+          1. Let _result_ be the result of performing _module_.[[EvaluationSteps]](_module_).
+          1. Suspend _moduleContext_ and remove it from the execution context stack.
           1. Resume the context that is now on the top of the execution context stack as the running execution context.
           1. Return Completion(_result_).
+        </emu-alg>
+      </emu-clause>
+
+      <emu-clause id="sec-synthetic-module-record-set-synthetic-export">
+        <h1>SetSyntheticExport ( _name_, _value_ )</h1>
+
+        <p>The SetSyntheticExport concrete method of a Synthetic Module Record _module_ takes argument _name_ (a String) and _value_.</p>
+        <p>It performs the following steps when called:</p>
+
+        <emu-alg>
+          1. Return ? _module_.[[Environment]].SetMutableBinding(_name_, _value_, *true*).
         </emu-alg>
       </emu-clause>
     </emu-clause>
   </emu-clause>
 
   <emu-clause id="sec-create-default-export-synthetic-module" aoid="CreateDefaultExportSyntheticModule">
-    <h1>CreateDefaultExportSyntheticModule ( _defaultExport_ )</h1>
-    <p>The CreateDefaultExportSyntheticModule abstract operation creates a Synthetic Module Record whose default export is _defaultExport_. It performs the following steps:</p>
+    <h1>CreateDefaultExportSyntheticModule ( _defaultExport_ , _realm_ , _hostDefined_ )</h1>
+    <p>The CreateDefaultExportSyntheticModule abstract operation takes arguments _defaultExport_, _realm_ (a Realm), and _hostDefined_.</p>
+    <p>It performs the following steps when called:</p>
     <emu-alg>
-      1. Return CreateSyntheticModule(&laquo; *"default"* &raquo;, the following steps, the current Realm, _defaultExport_) with the following steps given _module_ as an argument:</p>
-        1. SetSyntheticModuleExport(_module_, *"default"*, _module_.[[HostDefined]]).</li>
+      1. Let _closure_ be the a Abstract Closure with parameters (_module_) that captures _defaultExport_ and performs the following steps when called:
+        1. Return ? _module_.SetSyntheticExport(*"default"*, _defaultExport_).
+      1. Return CreateSyntheticModule(&laquo; *"default"* &raquo;, _closure_, _realm_)
     </emu-alg>
-    <!-- TODO: Could we apply the new spec closure concept here rather than painstakingly passing _defaultExport_ through [[HostDefined]]? -->
   </emu-clause>
 
   <emu-clause id="sec-parse-json-module" aoid="ParseJSONModule">
-    <h1>ParseJSONModule ( _source_ )</h1>
-    <p>The abstract operation ParseJSONModule takes a single argument _source_ which is a String representing the contents of a module.</p>
+    <h1>ParseJSONModule ( _sourceText_ , _realm_ , _hostDefined_ )</h1>
+    <p>The abstract operation ParseJSONModule takes arguments _sourceText_ (a String), _realm_ (a Realm Record), and _hostDefined_.</p>
+    <p>It performs the following steps when called:</p>
 
     <emu-alg>
-      1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
-      1. Return CreateDefaultExportSyntheticModule(_json_).
+      1. Let _jsonParse_ be _realm_'s intrinsic object named *"%JSON.parse%"*.
+      1. Let _json_ be ? Call(_jsonParse_, *undefined*, « _sourceText_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
+      1. Return CreateDefaultExportSyntheticModule(_json_, _realm_, _hostDefined_).
     </emu-alg>
   </emu-clause>
 </emu-clause>
