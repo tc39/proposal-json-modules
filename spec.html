@@ -22,7 +22,7 @@
   <emu-clause id="sec-hostresolveimportedmodule" aoid="HostResolveImportedModule">
     <h1>Runtime Semantics: HostResolveImportedModule ( _referencingScriptOrModule_, _moduleRequest_ )</h1>
     <emu-note>
-      <p>The changes made to this abstract operation in this proposal build on the changes in the <a href="https://tc39.es/proposal-import-assertions/#sec-hostresolveimportedmodule">import assertions</a> proposal.  In order to distingush them, the changes unique to this proposal are labeled as insertions while the changes from import assertions are not labeled.</p>
+      <p>The changes made to this abstract operation in this proposal build on the changes in the <a href="https://tc39.es/proposal-import-assertions/#sec-hostresolveimportedmodule">import assertions</a> proposal. In order to distingush them, the changes unique to this proposal are labeled as insertions while the changes from import assertions are not labeled.</p>
     </emu-note>
 
     <p>HostResolveImportedModule is an implementation-defined abstract operation that provides the concrete Module Record subclass instance that corresponds to the ModuleRequest Record _moduleRequest_ occurring within the context of the script or module represented by the Script Record or Module Record _referencingScriptOrModule_. _referencingScriptOrModule_ may also be *null*, if the resolution is being performed in the context of an <emu-xref href="#sec-import-calls">`import()`</emu-xref> expression, and there is no active script or module at that time.</p>
@@ -76,7 +76,6 @@
       <p>It's possible that one of these three options may make sense for a module load, on a case-by-case basis by attribute, but it's worth careful thought before making this choice.</p>
     </emu-note>
 
-
     <emu-note type=editor>
       <p><ins>The above text implies that hosts *must* support JSON modules imported with `type: "json"` (if it completes normally), but it doesn't prohibit hosts from supporting JSON modules imported with no type specified. Some environments (for example, web browsers) are expected to require `assert { type: "json" }`, and environments which want to restrict themselves to a compatible subset would do so as well.</ins></p>
     </emu-note>
@@ -95,25 +94,25 @@
 
     <emu-note>A Synthetic Module Record could be used for defining a variety of module types: for example, built-in modules, or JSON modules, or CSS modules.</emu-note>
 
-    <p>In addition to the fields defined in <emu-xref href="#table-36"></emu-xref>, Synthetic Module Records have the additional fields listed in <emu-xref href="#table-synthetic-module-record-fields"></emu-xref>. Each of these fields is initially set in CreateSyntheticModule.</p>
+    <p>In addition to the fields defined in <emu-xref href="#table-module-record-fields"></emu-xref>, Synthetic Module Records have the additional fields listed in <emu-xref href="#table-synthetic-module-record-fields"></emu-xref>. Each of these fields is initially set in CreateSyntheticModule.</p>
 
     <emu-table id="table-synthetic-module-record-fields" caption="Additional Fields of Synthetic Module Records">
       <table>
         <thead>
-          <th>Field Name
-          <th>Value Type
-          <th>Meaning
+          <th>Field Name</th>
+          <th>Value Type</th>
+          <th>Meaning</th>
         </thead>
         <tbody>
           <tr>
-            <td>[[ExportNames]]
-            <td>List of String
-            <td>A List of all names that are exported.
+            <td>[[ExportNames]]</td>
+            <td>List of Strings</td>
+            <td>A List of all names that are exported.</td>
           </tr>
           <tr>
-            <td>[[EvaluationSteps]]
-            <td>An Abstract Closure
-            <td>An Abstract Closure that will be performed upon evaluation of the module, taking the Synthetic Module Record as its sole argument. These will usually set up the exported values, by using SetSyntheticModuleExport. They must not modify [[ExportNames]]. They may return an abrupt completion.
+            <td>[[EvaluationSteps]]</td>
+            <td>An Abstract Closure</td>
+            <td>An Abstract Closure that will be performed upon evaluation of the module, taking the Synthetic Module Record as its sole argument. These will usually set up the exported values, by using SetSyntheticModuleExport. They must not modify [[ExportNames]]. They may return an abrupt completion.</td>
           </tr>
         </tbody>
       </table>
@@ -150,7 +149,7 @@
       <emu-note type="editor">I find having this wrapping sub-clause cleaner and suggest we do the same for Source Text Module Records in the main spec.</emu-note>
 
       <emu-clause id="sec-smr-getexportednames">
-        <h1>GetExportedNames( _exportStarSet_ )</h1>
+        <h1>GetExportedNames ( _exportStarSet_ )</h1>
 
         <p>The GetExportedNames concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
         <p>It performs the following steps:</p>
@@ -162,7 +161,7 @@
       </emu-clause>
 
       <emu-clause id="sec-smr-resolveexport">
-        <h1>ResolveExport( _exportName_, _resolveSet_ )</h1>
+        <h1>ResolveExport ( _exportName_, _resolveSet_ )</h1>
 
         <p>The ResolveExport concrete method of a Synthetic Module Record implements the corresponding Module Record abstract method.</p>
         <p>It performs the following steps:</p>
@@ -187,9 +186,9 @@
           1. Let _env_ be NewModuleEnvironment(_realm_.[[GlobalEnv]]).
           1. Set _module_.[[Environment]] to _env_.
           1. Let _envRec_ be _env_'s EnvironmentRecord.
-          1. For each _exportName_ in _module_.[[ExportNames]],
-          1. Perform ! _envRec_.CreateMutableBinding(_exportName_, *false*).
-          1. Perform ! _envRec_.InitializeBinding(_exportName_, *undefined*).
+          1. For each String _exportName_ in _module_.[[ExportNames]], do
+            1. Perform ! _envRec_.CreateMutableBinding(_exportName_, *false*).
+            1. Perform ! _envRec_.InitializeBinding(_exportName_, *undefined*).
           1. Return *undefined*.
         </emu-alg>
       </emu-clause>
@@ -224,10 +223,10 @@
     <h1>CreateDefaultExportSyntheticModule ( _defaultExport_ )</h1>
     <p>The CreateDefaultExportSyntheticModule abstract operation creates a Synthetic Module Record whose default export is _defaultExport_. It performs the following steps:</p>
     <emu-alg>
-      1. Return CreateSyntheticModule(&laquo; *"default"* &raquo;, the following steps, the current Realm, _defaultExport_) with the following steps given _module_ as an argument:</p>
-        1. SetSyntheticModuleExport(_module_, *"default"*, _module_.[[HostDefined]]).</li>
+      1. Let _closure_ be a new Abstract Closure with parameters (_module_) that captures nothing and performs the following steps when called:
+        1. SetSyntheticModuleExport(_module_, *"default"*, _module_.[[HostDefined]]).
+      1. Return CreateSyntheticModule(&laquo; *"default"* &raquo;, _closure_, the current Realm, _defaultExport_).
     </emu-alg>
-    <!-- TODO: Could we apply the new spec closure concept here rather than painstakingly passing _defaultExport_ through [[HostDefined]]? -->
   </emu-clause>
 
   <emu-clause id="sec-parse-json-module" aoid="ParseJSONModule">
@@ -235,7 +234,8 @@
     <p>The abstract operation ParseJSONModule takes a single argument _source_ which is a String representing the contents of a module.</p>
 
     <emu-alg>
-      1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
+      1. TODO: Update the following step to use a new JSONParse abstract operation.
+      1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).
       1. Return CreateDefaultExportSyntheticModule(_json_).
     </emu-alg>
   </emu-clause>
