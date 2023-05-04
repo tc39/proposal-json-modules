@@ -2,7 +2,7 @@
   "private": true,
   "scripts": {
     "start": "npm run build-loose -- --watch",
-    "build": "npm run build-loose -- --strict",
+    "build": "npm run build-loose -- --strict --lint-spec",
     "build-loose": "ecmarkup --load-biblio @tc39/ecma262-biblio --load-biblio ./import-attributes-biblio.json --verbose spec.emu index.html"
   },
   "devDependencies": {

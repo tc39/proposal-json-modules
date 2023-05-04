@@ -216,8 +216,8 @@
         <emu-alg>
           1. Let _realm_ be _module_.[[Realm]].
           1. Let _env_ be NewModuleEnvironment(_realm_.[[GlobalEnv]]).
-          1. Set _module_.[[Environment]] to _envRec_.
-          1. For each _exportName_ in _module_.[[ExportNames]], do
+          1. Set _module_.[[Environment]] to _env_.
+          1. For each String _exportName_ in _module_.[[ExportNames]], do
             1. Perform ! _env_.CreateMutableBinding(_exportName_, *false*).
             1. Perform ! _env_.InitializeBinding(_exportName_, *undefined*).
           1. Return ~unused~.
@@ -265,8 +265,8 @@
       <emu-alg>
         1. Let _realm_ be the current Realm Record.
         1. Let _setDefaultExport_ be a new Abstract Closure with parameters (_module_) that captures _defaultExport_ and performs the following steps when called:
-          1. SetSyntheticModuleExport(_module_, *"default"*, _defaultExport_).</li>
-        1. Return CreateSyntheticModule(« *"default"* «, _setDefaultExport_, _realm_).</p>
+          1. Perform SetSyntheticModuleExport(_module_, *"default"*, _defaultExport_).
+        1. Return CreateSyntheticModule(« *"default"* », _setDefaultExport_, _realm_).
       </emu-alg>
     </emu-clause>
 
@@ -282,9 +282,13 @@
       </dl>
 
       <emu-alg>
-        1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).  <!-- TODO: Refactor JSONParse into an abstract algorithm -->
+        1. Let _json_ be ? Call(%JSON.parse%, *undefined*, « _source_ »).
         1. Return CreateDefaultExportSyntheticModule(_json_).
       </emu-alg>
+
+      <emu-note type="editor">
+        TODO: Refactor JSONParse into an abstract algorithm.
+      </emu-note>
     </emu-clause>
   </emu-clause>
   </emu-clause>
