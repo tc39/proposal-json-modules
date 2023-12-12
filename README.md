@@ -34,7 +34,7 @@ Each JavaScript host is expected to provide a secondary way of checking whether 
 
 All of the import statements in the module graph that address the same JSON module will evaluate to the same mutable object as discussed in [#54](https://github.com/tc39/proposal-import-attributes/issues/54).
 
-Nevertheless, the interpretation of module loads with no attributes remains host/implementation-defined, so it is valid to implement JSON modules without *requiring* `assert { type: "json" }`. It's just that `assert { type: "json" }` must be supported everywhere. For example, it will be up to Node.js, not TC39, to decide whether import attributes are required or optional for JSON modules.
+Nevertheless, the interpretation of module loads with no attributes remains host/implementation-defined, so it is valid to implement JSON modules without *requiring* `with { type: "json" }`. It's just that `with { type: "json" }` must be supported everywhere. For example, it will be up to Node.js, not TC39, to decide whether import attributes are required or optional for JSON modules.
 
 Further attributes and module types beyond `json` modules could be added in future TC39 proposals as well as by hosts. HTML and CSS modules are also under consideration, and these may use similar explicit `type` syntax when imported.
 
