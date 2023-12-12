@@ -455,23 +455,66 @@ Menu.prototype.revealInToc = function (path) {
 };
 
 function findActiveClause(root, path) {
-  let clauses = getChildClauses(root);
   path = path || [];
 
-  for (let $clause of clauses) {
-    let rect = $clause.getBoundingClientRect();
+  let visibleClauses = getVisibleClauses(root, path);
+  let midpoint = Math.floor(window.innerHeight / 2);
+
+  for (let [$clause, path] of visibleClauses) {
+    let { top: clauseTop, bottom: clauseBottom } = $clause.getBoundingClientRect();
+    let isFullyVisibleAboveTheFold =
+      clauseTop > 0 && clauseTop < midpoint && clauseBottom < window.innerHeight;
+    if (isFullyVisibleAboveTheFold) {
+      return path;
+    }
+  }
+
+  visibleClauses.sort(([, pathA], [, pathB]) => pathB.length - pathA.length);
+  for (let [$clause, path] of visibleClauses) {
+    let { top: clauseTop, bottom: clauseBottom } = $clause.getBoundingClientRect();
     let $header = $clause.querySelector('h1');
+    let clauseStyles = getComputedStyle($clause);
     let marginTop = Math.max(
-      parseInt(getComputedStyle($clause)['margin-top']),
+      0,
+      parseInt(clauseStyles['margin-top']),
       parseInt(getComputedStyle($header)['margin-top'])
     );
-
-    if (rect.top - marginTop <= 1 && rect.bottom > 0) {
-      return findActiveClause($clause, path.concat($clause)) || path;
+    let marginBottom = Math.max(0, parseInt(clauseStyles['margin-bottom']));
+    let crossesMidpoint =
+      clauseTop - marginTop <= midpoint && clauseBottom + marginBottom >= midpoint;
+    if (crossesMidpoint) {
+      return path;
     }
   }
 
   return path;
+}
+
+function getVisibleClauses(root, path) {
+  let childClauses = getChildClauses(root);
+  path = path || [];
+
+  let result = [];
+
+  let seenVisibleClause = false;
+  for (let $clause of childClauses) {
+    let { top: clauseTop, bottom: clauseBottom } = $clause.getBoundingClientRect();
+    let isPartiallyVisible =
+      (clauseTop > 0 && clauseTop < window.innerHeight) ||
+      (clauseBottom > 0 && clauseBottom < window.innerHeight) ||
+      (clauseTop < 0 && clauseBottom > window.innerHeight);
+
+    if (isPartiallyVisible) {
+      seenVisibleClause = true;
+      let innerPath = path.concat($clause);
+      result.push([$clause, innerPath]);
+      result.push(...getVisibleClauses($clause, innerPath));
+    } else if (seenVisibleClause) {
+      break;
+    }
+  }
+
+  return result;
 }
 
 function* getChildClauses(root) {
@@ -1165,12 +1208,40 @@ function getActiveTocPaths() {
   return [...menu.$menu.querySelectorAll('.active')].map(getTocPath).filter(p => p != null);
 }
 
-function loadStateFromSessionStorage() {
-  if (!window.sessionStorage || typeof menu === 'undefined' || window.navigating) {
+function initTOCExpansion(visibleItemLimit) {
+  // Initialize to a reasonable amount of TOC expansion:
+  // * Expand any full-breadth nesting level up to visibleItemLimit.
+  // * Expand any *single-item* level while under visibleItemLimit (even if that pushes over it).
+
+  // Limit to initialization by bailing out if any parent item is already expanded.
+  const tocItems = Array.from(document.querySelectorAll('#menu-toc li'));
+  if (tocItems.some(li => li.classList.contains('active') && li.querySelector('li'))) {
     return;
   }
-  if (sessionStorage.referencePaneState != null) {
-    let state = JSON.parse(sessionStorage.referencePaneState);
+
+  const selfAndSiblings = maybe => Array.from(maybe?.parentNode.children ?? []);
+  let currentLevelItems = selfAndSiblings(tocItems[0]);
+  let availableCount = visibleItemLimit - currentLevelItems.length;
+  while (availableCount > 0 && currentLevelItems.length) {
+    const nextLevelItems = currentLevelItems.flatMap(li => selfAndSiblings(li.querySelector('li')));
+    availableCount -= nextLevelItems.length;
+    if (availableCount > 0 || currentLevelItems.length === 1) {
+      // Expand parent items of the next level down (i.e., current-level items with children).
+      for (const ol of new Set(nextLevelItems.map(li => li.parentNode))) {
+        ol.closest('li').classList.add('active');
+      }
+    }
+    currentLevelItems = nextLevelItems;
+  }
+}
+
+function initState() {
+  if (typeof menu === 'undefined' || window.navigating) {
+    return;
+  }
+  const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : Object.create(null);
+  if (storage.referencePaneState != null) {
+    let state = JSON.parse(storage.referencePaneState);
     if (state != null) {
       if (state.type === 'ref') {
         let entry = menu.search.biblio.byId[state.id];
@@ -1184,39 +1255,36 @@ function loadStateFromSessionStorage() {
           referencePane.showSDOsBody(sdos, state.id);
         }
       }
-      delete sessionStorage.referencePaneState;
+      delete storage.referencePaneState;
     }
   }
 
-  if (sessionStorage.activeTocPaths != null) {
-    document
-      .getElementById('menu-toc')
-      .querySelectorAll('.active')
-      .forEach(e => {
-        e.classList.remove('active');
-      });
-    let active = JSON.parse(sessionStorage.activeTocPaths);
+  if (storage.activeTocPaths != null) {
+    document.querySelectorAll('#menu-toc li.active').forEach(li => li.classList.remove('active'));
+    let active = JSON.parse(storage.activeTocPaths);
     active.forEach(activateTocPath);
-    delete sessionStorage.activeTocPaths;
+    delete storage.activeTocPaths;
+  } else {
+    initTOCExpansion(20);
   }
 
-  if (sessionStorage.searchValue != null) {
-    let value = JSON.parse(sessionStorage.searchValue);
+  if (storage.searchValue != null) {
+    let value = JSON.parse(storage.searchValue);
     menu.search.$searchBox.value = value;
     menu.search.search(value);
-    delete sessionStorage.searchValue;
+    delete storage.searchValue;
   }
 
-  if (sessionStorage.tocScroll != null) {
-    let tocScroll = JSON.parse(sessionStorage.tocScroll);
+  if (storage.tocScroll != null) {
+    let tocScroll = JSON.parse(storage.tocScroll);
     menu.$toc.scrollTop = tocScroll;
-    delete sessionStorage.tocScroll;
+    delete storage.tocScroll;
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadStateFromSessionStorage);
+document.addEventListener('DOMContentLoaded', initState);
 
-window.addEventListener('pageshow', loadStateFromSessionStorage);
+window.addEventListener('pageshow', initState);
 
 window.addEventListener('beforeunload', () => {
   if (!window.sessionStorage || typeof menu === 'undefined') {
@@ -2628,7 +2696,7 @@ li.menu-search-result-term:before {
 </ul></div><div id="menu-toggle"><svg xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; stroke:currentColor" viewBox="0 0 120 120">
       <title>Menu</title>
       <path stroke-width="10" stroke-linecap="round" d="M30,60 h60  M30,30 m0,5 h60  M30,90 m0,-5 h60"></path>
-    </svg></div><div id="menu-spacer" class="menu-spacer"></div><div id="menu"><div id="menu-search"><input type="text" id="menu-search-box" placeholder="Search..."><div id="menu-search-results" class="inactive"></div></div><div id="menu-pins"><div class="menu-pane-header">Pins</div><ul id="menu-pins-list"></ul></div><div class="menu-pane-header">Table of Contents</div><div id="menu-toc"><ol class="toc"><li><span class="item-toggle-none"></span><a href="#intro" title="JSON modules">JSON modules</a></li><li><span class="item-toggle">◢</span><a href="#sec-semantics" title="Semantics"><span class="secnum">1</span> Semantics</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-HostLoadImportedModule" title="HostLoadImportedModule ( referrer, moduleRequest, hostDefined, payload )"><span class="secnum">1.1</span> HostLoadImportedModule ( <var>referrer</var>, <var>moduleRequest</var>, <var>hostDefined</var>, <var>payload</var> )</a></li><li><span class="item-toggle">◢</span><a href="#sec-synthetic-module-records" title="Synthetic Module Records"><span class="secnum">1.2</span> Synthetic Module Records</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-createsyntheticmodule" title="CreateSyntheticModule ( exportNames, evaluationSteps, realm )"><span class="secnum">1.2.1</span> CreateSyntheticModule ( <var>exportNames</var>, <var>evaluationSteps</var>, <var>realm</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-setsyntheticmoduleexport" title="SetSyntheticModuleExport ( module, exportName, exportValue )"><span class="secnum">1.2.2</span> SetSyntheticModuleExport ( <var>module</var>, <var>exportName</var>, <var>exportValue</var> )</a></li><li><span class="item-toggle">◢</span><a href="#sec-smr-concrete-methods" title="Concrete Methods"><span class="secnum">1.2.3</span> Concrete Methods</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-smr-LoadRequestedModules" title="LoadRequestedModules ( )"><span class="secnum">1.2.3.1</span> LoadRequestedModules ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-getexportednames" title="GetExportedNames ( )"><span class="secnum">1.2.3.2</span> GetExportedNames ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-resolveexport" title="ResolveExport ( exportName )"><span class="secnum">1.2.3.3</span> ResolveExport ( <var>exportName</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-Link" title="Link ( )"><span class="secnum">1.2.3.4</span> Link ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-Evaluate" title="Evaluate ( )"><span class="secnum">1.2.3.5</span> Evaluate ( )</a></li></ol></li><li><span class="item-toggle-none"></span><a href="#sec-create-default-export-synthetic-module" title="CreateDefaultExportSyntheticModule ( defaultExport )"><span class="secnum">1.2.4</span> CreateDefaultExportSyntheticModule ( <var>defaultExport</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-parse-json-module" title="ParseJSONModule ( source )"><span class="secnum">1.2.5</span> ParseJSONModule ( <var>source</var> )</a></li></ol></li></ol></li></ol></div></div><div id="spec-container"><h1 class="version">Stage 3 Draft / May 4, 2023</h1>
+    </svg></div><div id="menu-spacer" class="menu-spacer"></div><div id="menu"><div id="menu-search"><input type="text" id="menu-search-box" placeholder="Search..."><div id="menu-search-results" class="inactive"></div></div><div id="menu-pins"><div class="menu-pane-header">Pins</div><ul id="menu-pins-list"></ul></div><div class="menu-pane-header">Table of Contents</div><div id="menu-toc"><ol class="toc"><li><span class="item-toggle-none"></span><a href="#intro" title="JSON modules">JSON modules</a></li><li><span class="item-toggle">◢</span><a href="#sec-semantics" title="Semantics"><span class="secnum">1</span> Semantics</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-HostLoadImportedModule" title="HostLoadImportedModule ( referrer, moduleRequest, hostDefined, payload )"><span class="secnum">1.1</span> HostLoadImportedModule ( <var>referrer</var>, <var>moduleRequest</var>, <var>hostDefined</var>, <var>payload</var> )</a></li><li><span class="item-toggle">◢</span><a href="#sec-synthetic-module-records" title="Synthetic Module Records"><span class="secnum">1.2</span> Synthetic Module Records</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-createsyntheticmodule" title="CreateSyntheticModule ( exportNames, evaluationSteps, realm )"><span class="secnum">1.2.1</span> CreateSyntheticModule ( <var>exportNames</var>, <var>evaluationSteps</var>, <var>realm</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-setsyntheticmoduleexport" title="SetSyntheticModuleExport ( module, exportName, exportValue )"><span class="secnum">1.2.2</span> SetSyntheticModuleExport ( <var>module</var>, <var>exportName</var>, <var>exportValue</var> )</a></li><li><span class="item-toggle">◢</span><a href="#sec-smr-concrete-methods" title="Concrete Methods"><span class="secnum">1.2.3</span> Concrete Methods</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-smr-LoadRequestedModules" title="LoadRequestedModules ( )"><span class="secnum">1.2.3.1</span> LoadRequestedModules ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-getexportednames" title="GetExportedNames ( )"><span class="secnum">1.2.3.2</span> GetExportedNames ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-resolveexport" title="ResolveExport ( exportName )"><span class="secnum">1.2.3.3</span> ResolveExport ( <var>exportName</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-Link" title="Link ( )"><span class="secnum">1.2.3.4</span> Link ( )</a></li><li><span class="item-toggle-none"></span><a href="#sec-smr-Evaluate" title="Evaluate ( )"><span class="secnum">1.2.3.5</span> Evaluate ( )</a></li></ol></li><li><span class="item-toggle-none"></span><a href="#sec-create-default-export-synthetic-module" title="CreateDefaultExportSyntheticModule ( defaultExport )"><span class="secnum">1.2.4</span> CreateDefaultExportSyntheticModule ( <var>defaultExport</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-parse-json-module" title="ParseJSONModule ( source )"><span class="secnum">1.2.5</span> ParseJSONModule ( <var>source</var> )</a></li></ol></li></ol></li></ol></div></div><div id="spec-container"><h1 class="version">Stage 3 Draft / December 12, 2023</h1>
 <emu-intro id="intro">
   <h1>JSON modules</h1>
   <p>See <a href="https://github.com/tc39/proposal-json-modules/blob/master/README.md">the explainer</a> for information.</p>
@@ -2721,7 +2789,7 @@ li.menu-search-result-term:before {
       <h1><span class="secnum">1.2.1</span> CreateSyntheticModule ( <var>exportNames</var>, <var>evaluationSteps</var>, <var>realm</var> )</h1>
       <p>The abstract operation CreateSyntheticModule takes arguments <var>exportNames</var> (a <emu-xref href="#sec-list-and-record-specification-type"><a href="https://tc39.es/ecma262/#sec-list-and-record-specification-type">List</a></emu-xref> of Strings without duplicates), <var>evaluationSteps</var> (an <emu-xref href="#sec-abstract-closure"><a href="https://tc39.es/ecma262/#sec-abstract-closure">Abstract Closure</a></emu-xref>), and <var>realm</var> (a <emu-xref href="#realm-record"><a href="https://tc39.es/ecma262/#realm-record">Realm Record</a></emu-xref>) and returns a <emu-xref href="#sec-synthetic-module-records" id="_ref_8"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref>. It creates a <emu-xref href="#sec-synthetic-module-records" id="_ref_9"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref> based upon the given exported names and evaluation steps. It performs the following steps when called:</p>
 
-      <emu-alg><ol><li>Return <emu-xref href="#sec-synthetic-module-records" id="_ref_10"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref> { <var class="field">[[Realm]]</var>: <var>realm</var>, <var class="field">[[Environment]]</var>: <emu-const>empty</emu-const>, <var class="field">[[Namespace]]</var>: <emu-const>empty</emu-const>, <var class="field">[[HostDefined]]</var>: <emu-const>empty</emu-const>, <var class="field">[[ExportNames]]</var>: <var>exportNames</var>, <var class="field">[[EvaluationSteps]]</var>: <var>evaluationSteps</var> }.</li></ol></emu-alg>
+      <emu-alg><ol><li>Return <emu-xref href="#sec-synthetic-module-records" id="_ref_10"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref> { <var class="field">[[Realm]]</var>: <var>realm</var>, <var class="field">[[Environment]]</var>: <emu-const>empty</emu-const>, <var class="field">[[Namespace]]</var>: <emu-const>empty</emu-const>, <var class="field">[[HostDefined]]</var>: <emu-const>empty</emu-const>, <var class="field">[[ExportNames]]</var>: <var>exportNames</var>, <var class="field">[[EvaluationSteps]]</var>: <var>evaluationSteps</var>&nbsp;}.</li></ol></emu-alg>
 
       <emu-note type="editor"><span class="note">Editor's Note</span><div class="note-contents">It seems we could set up the environment either here or in Link(). I've chosen to do so in Link() for symmetry with <emu-xref href="#cyclic-module-record"><a href="https://tc39.es/proposal-import-attributes#cyclic-module-record">Cyclic Module Records</a></emu-xref> (and thus <emu-xref href="#sourctextmodule-record"><a href="https://tc39.es/ecma262/#sourctextmodule-record">Source Text Module Records</a></emu-xref>), but I don't think there's any actual requirement in that regard.</div></emu-note>
     </emu-clause>
@@ -2762,7 +2830,7 @@ li.menu-search-result-term:before {
         <h1><span class="secnum">1.2.3.3</span> ResolveExport ( <var>exportName</var> )</h1>
         <p>The ResolveExport concrete method of a <emu-xref href="#sec-synthetic-module-records" id="_ref_17"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref> <var>module</var> takes argument <var>exportName</var> (a String) and returns a <emu-xref href="#resolvedbinding-record"><a href="https://tc39.es/ecma262/#resolvedbinding-record">ResolvedBinding Record</a></emu-xref> or <emu-val>null</emu-val>. It performs the following steps when called:</p>
 
-        <emu-alg><ol><li>If <var>module</var>.<var class="field">[[ExportNames]]</var> does not contain <var>exportName</var>, return <emu-val>null</emu-val>.</li><li>Return <emu-xref href="#resolvedbinding-record"><a href="https://tc39.es/ecma262/#resolvedbinding-record">ResolvedBinding Record</a></emu-xref> { <var class="field">[[Module]]</var>: <var>module</var>, <var class="field">[[BindingName]]</var>: <var>exportName</var> }.</li></ol></emu-alg>
+        <emu-alg><ol><li>If <var>module</var>.<var class="field">[[ExportNames]]</var> does not contain <var>exportName</var>, return <emu-val>null</emu-val>.</li><li>Return <emu-xref href="#resolvedbinding-record"><a href="https://tc39.es/ecma262/#resolvedbinding-record">ResolvedBinding Record</a></emu-xref> { <var class="field">[[Module]]</var>: <var>module</var>, <var class="field">[[BindingName]]</var>: <var>exportName</var>&nbsp;}.</li></ol></emu-alg>
       </emu-clause>
 
       <emu-clause id="sec-smr-Link" type="concrete method">
@@ -2783,14 +2851,14 @@ li.menu-search-result-term:before {
     <emu-clause id="sec-create-default-export-synthetic-module" type="abstract operation" aoid="CreateDefaultExportSyntheticModule">
       <h1><span class="secnum">1.2.4</span> CreateDefaultExportSyntheticModule ( <var>defaultExport</var> )</h1>
       <p>The abstract operation CreateDefaultExportSyntheticModule takes argument <var>defaultExport</var> (an ECMAScript Language value) and returns a <emu-xref href="#sec-synthetic-module-records" id="_ref_20"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref>. It creates a <emu-xref href="#sec-synthetic-module-records" id="_ref_21"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref> whose default export is <var>defaultExport</var>. It performs the following steps when called:</p>
-      <emu-alg><ol><li>Let <var>realm</var> be <emu-xref href="#current-realm"><a href="https://tc39.es/ecma262/#current-realm">the current Realm Record</a></emu-xref>.</li><li>Let <var>setDefaultExport</var> be a new <emu-xref href="#sec-abstract-closure"><a href="https://tc39.es/ecma262/#sec-abstract-closure">Abstract Closure</a></emu-xref> with parameters (<var>module</var>) that captures <var>defaultExport</var> and performs the following steps when called:<ol><li>Perform <emu-xref aoid="SetSyntheticModuleExport" id="_ref_22"><a href="#sec-setsyntheticmoduleexport">SetSyntheticModuleExport</a></emu-xref>(<var>module</var>, <emu-val>"default"</emu-val>, <var>defaultExport</var>).</li></ol></li><li>Return <emu-xref aoid="CreateSyntheticModule" id="_ref_23"><a href="#sec-createsyntheticmodule">CreateSyntheticModule</a></emu-xref>(« <emu-val>"default"</emu-val> », <var>setDefaultExport</var>, <var>realm</var>).</li></ol></emu-alg>
+      <emu-alg><ol><li>Let <var>realm</var> be <emu-xref href="#current-realm"><a href="https://tc39.es/ecma262/#current-realm">the current Realm Record</a></emu-xref>.</li><li>Let <var>setDefaultExport</var> be a new <emu-xref href="#sec-abstract-closure"><a href="https://tc39.es/ecma262/#sec-abstract-closure">Abstract Closure</a></emu-xref> with parameters (<var>module</var>) that captures <var>defaultExport</var> and performs the following steps when called:<ol><li>Perform <emu-xref aoid="SetSyntheticModuleExport" id="_ref_22"><a href="#sec-setsyntheticmoduleexport">SetSyntheticModuleExport</a></emu-xref>(<var>module</var>, <emu-val>"default"</emu-val>, <var>defaultExport</var>).</li></ol></li><li>Return <emu-xref aoid="CreateSyntheticModule" id="_ref_23"><a href="#sec-createsyntheticmodule">CreateSyntheticModule</a></emu-xref>(« <emu-val>"default"</emu-val>&nbsp;», <var>setDefaultExport</var>, <var>realm</var>).</li></ol></emu-alg>
     </emu-clause>
 
     <emu-clause id="sec-parse-json-module" type="abstract operation" aoid="ParseJSONModule">
       <h1><span class="secnum">1.2.5</span> ParseJSONModule ( <var>source</var> )</h1>
       <p>The abstract operation ParseJSONModule takes argument <var>source</var> (a String) and returns either a <emu-xref href="#sec-completion-record-specification-type"><a href="https://tc39.es/ecma262/#sec-completion-record-specification-type">normal completion containing</a></emu-xref> a <emu-xref href="#sec-synthetic-module-records" id="_ref_24"><a href="#sec-synthetic-module-records">Synthetic Module Record</a></emu-xref>, or a <emu-xref href="#sec-completion-record-specification-type"><a href="https://tc39.es/ecma262/#sec-completion-record-specification-type">throw completion</a></emu-xref>. It performs the following steps when called:</p>
 
-      <emu-alg><ol><li>Let <var>json</var> be ?&nbsp;<emu-xref aoid="Call"><a href="https://tc39.es/ecma262/#sec-call">Call</a></emu-xref>(%JSON.parse%, <emu-val>undefined</emu-val>, « <var>source</var> »).</li><li>Return <emu-xref aoid="CreateDefaultExportSyntheticModule" id="_ref_25"><a href="#sec-create-default-export-synthetic-module">CreateDefaultExportSyntheticModule</a></emu-xref>(<var>json</var>).</li></ol></emu-alg>
+      <emu-alg><ol><li>Let <var>json</var> be ?&nbsp;<emu-xref aoid="Call"><a href="https://tc39.es/ecma262/#sec-call">Call</a></emu-xref>(%JSON.parse%, <emu-val>undefined</emu-val>, « <var>source</var>&nbsp;»).</li><li>Return <emu-xref aoid="CreateDefaultExportSyntheticModule" id="_ref_25"><a href="#sec-create-default-export-synthetic-module">CreateDefaultExportSyntheticModule</a></emu-xref>(<var>json</var>).</li></ol></emu-alg>
 
       <emu-note type="editor"><span class="note">Editor's Note</span><div class="note-contents">
         TODO: Refactor JSONParse into an abstract algorithm.
