@@ -1,7 +1,5 @@
 <!doctype html>
 <meta charset="utf8">
-<script src="ecmarkup.js"></script>
-<link rel="stylesheet" href="ecmarkup.css">
 <title>JSON modules</title>
 <pre class=metadata>
   title: JSON modules
