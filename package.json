@@ -6,7 +6,7 @@
     "build-loose": "ecmarkup --load-biblio @tc39/ecma262-biblio --load-biblio ./import-attributes-biblio.json --verbose spec.emu index.html"
   },
   "devDependencies": {
-    "ecmarkup": "^17.0.0",
-    "@tc39/ecma262-biblio": "2.1.2553"
+    "@tc39/ecma262-biblio": "^2.1.2663",
+    "ecmarkup": "^18.1.1"
   }
 }
