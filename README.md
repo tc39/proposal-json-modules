@@ -1,10 +1,10 @@
 # JSON modules
 
-Champions: Sven Sauleau ([@xtuc](https://github.com/xtuc)), Daniel Ehrenberg ([@littledan](https://github.com/littledan)), Myles Borins ([@MylesBorins](https://github.com/MylesBorins)), and Dan Clark ([@dandclark](https://github.com/dandclark))
+Champions: Sven Sauleau ([@xtuc](https://github.com/xtuc)), Daniel Ehrenberg ([@littledan](https://github.com/littledan)), Myles Borins ([@MylesBorins](https://github.com/MylesBorins)), Dan Clark ([@dandclark](https://github.com/dandclark)), and ([@nicolo-ribaudo](https://github.com/nicolo-ribaudo)).
 
-Status: Stage 3.
+Status: Stage 4.
 
-Please leave any feedback you have in the [issues](http://github.com/tc39/proposal-json-modules/issues)!
+This proposal is now [merged into the ECMA-262 spec](https://tc39.es/ecma262/#sec-HostLoadImportedModule).
 
 ## Synopsis
 
